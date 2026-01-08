@@ -5,6 +5,7 @@ import { useCoAgent } from '@copilotkit/react-core';
 import { GTMState } from '@/lib/types';
 import { AuthButton } from '@/components/auth/AuthButton';
 import { authClient } from '@/lib/auth/client';
+import { VoiceWidget } from '@/components/voice/VoiceWidget';
 
 // Base instructions for the GTM advisor agent
 const BASE_INSTRUCTIONS = `You are an expert Go-To-Market (GTM) strategist helping companies plan their market entry.
@@ -83,7 +84,13 @@ Start by greeting the user and asking what kind of company they're building.`;
                 AI-Powered Go-To-Market Strategy
               </p>
             </div>
-            <AuthButton />
+            <div className="flex items-center gap-4">
+              <VoiceWidget
+                userName={user?.name}
+                userId={user?.id}
+              />
+              <AuthButton />
+            </div>
           </div>
         </div>
 

@@ -354,11 +354,17 @@ async def update_company_info(
 
 
 # =====
-# FastAPI App with AG-UI
+# FastAPI App with AG-UI + CLM
 # =====
 
-from fastapi import FastAPI
+import json
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import StreamingResponse
+import google.generativeai as genai
+
+# Configure Google AI
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # Create AG-UI app from agent
 ag_ui_app = agent.to_ag_ui(deps=StateDeps(AppState()))
@@ -383,6 +389,108 @@ main_app.add_middleware(
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "agent": "gtm_agent"}
+
+
+# =====
+# CLM Endpoint for Hume Voice
+# =====
+
+GTM_VOICE_SYSTEM_PROMPT = """You are a friendly AI GTM (Go-To-Market) strategist having a voice conversation.
+
+Your expertise:
+- Go-to-market strategy (PLG, Sales-Led, Hybrid approaches)
+- Startup and scale-up growth strategies
+- Agency and tool recommendations
+- ROI projections and benchmarks
+
+Voice guidelines:
+- Keep responses SHORT (1-2 sentences) for natural conversation
+- Ask follow-up questions to understand their needs
+- Be warm, consultative, and specific
+- When you have enough info, summarize their GTM approach
+"""
+
+
+async def stream_sse_response(content: str, msg_id: str):
+    """Stream OpenAI-compatible SSE chunks for Hume EVI."""
+    words = content.split(' ')
+    for i, word in enumerate(words):
+        chunk = {
+            "id": msg_id,
+            "object": "chat.completion.chunk",
+            "choices": [{
+                "index": 0,
+                "delta": {"content": word + (' ' if i < len(words) - 1 else '')},
+                "finish_reason": None
+            }]
+        }
+        yield f"data: {json.dumps(chunk)}\n\n"
+
+    # Send finish chunk
+    yield f"data: {json.dumps({'choices': [{'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
+    yield "data: [DONE]\n\n"
+
+
+@main_app.post("/chat/completions")
+async def clm_endpoint(request: Request):
+    """OpenAI-compatible CLM endpoint for Hume EVI voice."""
+    try:
+        body = await request.json()
+        messages = body.get("messages", [])
+
+        # Extract user message
+        user_msg = ""
+        system_prompt = GTM_VOICE_SYSTEM_PROMPT
+
+        for msg in messages:
+            if msg.get("role") == "system":
+                # Use Hume's system prompt if provided (contains user context)
+                system_prompt = msg.get("content", GTM_VOICE_SYSTEM_PROMPT)
+            elif msg.get("role") == "user":
+                user_msg = msg.get("content", "")
+
+        if not user_msg:
+            user_msg = "Hello"
+
+        # Call Google Gemini for response
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+
+        # Build conversation history for context
+        history = []
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if role == "user":
+                history.append({"role": "user", "parts": [content]})
+            elif role == "assistant":
+                history.append({"role": "model", "parts": [content]})
+
+        # Create chat with history
+        chat = model.start_chat(history=history[:-1] if history else [])
+
+        # Add system prompt to the user message for context
+        full_prompt = f"{system_prompt}\n\nUser: {user_msg}\n\nRespond naturally and concisely (1-2 sentences for voice):"
+
+        response = chat.send_message(full_prompt)
+        response_text = response.text.strip()
+
+        # Generate message ID
+        msg_id = f"clm-{hash(user_msg) % 100000}"
+
+        print(f"[CLM] User: {user_msg[:50]}... -> Response: {response_text[:50]}...", file=sys.stderr)
+
+        return StreamingResponse(
+            stream_sse_response(response_text, msg_id),
+            media_type="text/event-stream"
+        )
+
+    except Exception as e:
+        print(f"[CLM] Error: {e}", file=sys.stderr)
+        error_msg = "I'm having trouble responding right now. Could you try again?"
+        return StreamingResponse(
+            stream_sse_response(error_msg, "clm-error"),
+            media_type="text/event-stream"
+        )
 
 
 # Mount AG-UI app at root for CopilotKit

@@ -4,9 +4,10 @@ import { CopilotSidebar } from '@copilotkit/react-ui';
 import { useCoAgent } from '@copilotkit/react-core';
 import { GTMState } from '@/lib/types';
 import { AuthButton } from '@/components/auth/AuthButton';
+import { authClient } from '@/lib/auth/client';
 
-// Instructions for the GTM advisor agent
-const GTM_INSTRUCTIONS = `You are an expert Go-To-Market (GTM) strategist helping companies plan their market entry.
+// Base instructions for the GTM advisor agent
+const BASE_INSTRUCTIONS = `You are an expert Go-To-Market (GTM) strategist helping companies plan their market entry.
 
 Your role:
 - Ask about the user's company, product, target market, and goals
@@ -16,11 +17,13 @@ Your role:
 - Share relevant case studies from similar companies
 
 Always be conversational and helpful. Ask follow-up questions to understand their needs.
-When you have enough information, use your tools to generate recommendations.
-
-Start by greeting the user and asking what kind of company they're building.`;
+When you have enough information, use your tools to generate recommendations.`;
 
 export default function Home() {
+  // Get user session
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
+
   // Sync state with the Pydantic AI agent
   const { state } = useCoAgent<GTMState>({
     name: 'gtm_agent',
@@ -31,13 +34,40 @@ export default function Home() {
     },
   });
 
+  // Build instructions with user context when logged in
+  const instructions = user
+    ? `${BASE_INSTRUCTIONS}
+
+## USER CONTEXT (Logged In)
+- User Name: ${user.name || 'Unknown'}
+- User ID: ${user.id}
+- User Email: ${user.email || 'Not provided'}
+
+Since this user is logged in, you can:
+- Address them by name
+- Save their GTM strategy for future reference
+- Provide more personalized recommendations
+
+Start by greeting ${user.name?.split(' ')[0] || 'them'} by name and asking what kind of company they're building.`
+    : `${BASE_INSTRUCTIONS}
+
+## ANONYMOUS USER
+This user is not logged in. Encourage them to sign up to save their GTM strategy.
+
+Start by greeting the user and asking what kind of company they're building.`;
+
+  // Dynamic initial message based on auth state
+  const initialMessage = user
+    ? `Hi ${user.name?.split(' ')[0] || 'there'}! I'm your AI GTM strategist. Tell me about your company and I'll help you build a personalized go-to-market plan.`
+    : "Hi! I'm your AI GTM strategist. Tell me about your company and I'll help you build a go-to-market plan.";
+
   return (
     <CopilotSidebar
       defaultOpen={true}
-      instructions={GTM_INSTRUCTIONS}
+      instructions={instructions}
       labels={{
         title: 'GTM Strategist',
-        initial: "Hi! I'm your AI GTM strategist. Tell me about your company and I'll help you build a go-to-market plan.",
+        initial: initialMessage,
       }}
       className="h-screen"
     >

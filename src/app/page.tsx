@@ -27,6 +27,10 @@ const InlineChatActions = dynamic(
   () => import('@/components/chat/InlineChatActions').then(mod => mod.InlineChatActions),
   { ssr: false }
 );
+const LiveDashboard = dynamic(
+  () => import('@/components/dashboard/LiveDashboard').then(mod => mod.LiveDashboard),
+  { ssr: false }
+);
 
 // Instructions for the GTM advisor agent
 const AGENT_INSTRUCTIONS = `You are an expert Go-To-Market (GTM) strategist helping companies plan their market entry.
@@ -355,7 +359,17 @@ Address them by name. Start by greeting ${user.name?.split(' ')[0] || 'them'}.`
           </div>
         </section>
 
-        {/* CTA Section */}
+        {/* LIVE DASHBOARD - Shows and builds in real-time as user chats */}
+        {hasReportData && (
+          <section className="py-16 md:py-24 bg-gradient-to-b from-zinc-950 to-black border-t border-emerald-500/20">
+            <div className="max-w-7xl mx-auto px-6">
+              <LiveDashboard />
+            </div>
+          </section>
+        )}
+
+        {/* CTA Section - Shows when no report data */}
+        {!hasReportData && (
         <section className="py-16 md:py-24 bg-gradient-to-b from-black to-zinc-900 border-t border-white/10">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h2 className="text-4xl md:text-5xl font-black text-white mb-6">
@@ -380,8 +394,9 @@ Address them by name. Start by greeting ${user.name?.split(' ')[0] || 'them'}.`
             </div>
           </div>
         </section>
+        )}
 
-        {/* Report Content - Shows when user has generated report data via chat */}
+        {/* Detailed Report Content - Shows below dashboard when user has data */}
         {hasReportData && (
           <section className="py-16 md:py-24 bg-zinc-950 border-t border-white/10">
             <div className="max-w-7xl mx-auto px-6">

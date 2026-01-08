@@ -13,4 +13,4 @@ COPY src/ ./src/
 EXPOSE 8000
 
 # Run the agent
-CMD ["python", "-m", "uvicorn", "src.agent:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/bin/sh", "-c", "python -m uvicorn src.agent:app --host 0.0.0.0 --port ${PORT:-8000}"]

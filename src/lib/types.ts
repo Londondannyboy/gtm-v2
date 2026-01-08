@@ -63,6 +63,7 @@ export interface GTMState {
   industry?: string;
   stage?: string;
   target_market?: string;
+  budget?: number;
 
   // Generated outputs (populate main panel)
   strategy?: GTMStrategy;

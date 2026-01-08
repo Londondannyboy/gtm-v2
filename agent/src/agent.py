@@ -17,6 +17,14 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Database connection
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+def get_db_connection():
+    """Get a database connection."""
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
 
 # =====
 # State Models
@@ -351,6 +359,350 @@ async def update_company_info(
         "success": True,
         "message": f"Updated: {', '.join(updated)}",
     }
+
+
+# =====
+# Database Query Tools
+# =====
+
+@agent.tool
+async def search_agencies(
+    ctx: RunContext[StateDeps[AppState]],
+    location: Optional[str] = None,
+    specialization: Optional[str] = None,
+    max_results: int = 5,
+) -> dict:
+    """Search for GTM agencies from our database.
+
+    Args:
+        location: Filter by location (e.g., 'London', 'New York', 'Remote')
+        specialization: Filter by specialization (e.g., 'Demand Generation', 'ABM', 'PLG')
+        max_results: Maximum number of agencies to return (default 5)
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT id, slug, name, description, headquarters, logo_url,
+                   specializations, service_areas, global_rank, website,
+                   pricing_model, min_budget, avg_rating, review_count
+            FROM companies
+            WHERE app = 'gtm' AND status = 'published'
+        """
+        params = []
+
+        if location:
+            query += " AND (headquarters ILIKE %s OR %s = ANY(service_areas))"
+            params.extend([f"%{location}%", location])
+
+        if specialization:
+            query += " AND %s = ANY(specializations)"
+            params.append(specialization)
+
+        query += " ORDER BY global_rank NULLS LAST LIMIT %s"
+        params.append(max_results)
+
+        cursor.execute(query, params)
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        agencies = []
+        for row in results:
+            agencies.append({
+                "name": row["name"],
+                "slug": row["slug"],
+                "description": row["description"],
+                "headquarters": row["headquarters"],
+                "specializations": row["specializations"] or [],
+                "global_rank": row["global_rank"],
+                "website": row["website"],
+                "pricing_model": row["pricing_model"],
+                "min_budget": row["min_budget"],
+            })
+
+            # Also add to provider recommendations
+            provider = Provider(
+                id=str(row["id"]),
+                name=row["name"],
+                slug=row["slug"],
+                type="agency",
+                description=row["description"] or "",
+                specializations=row["specializations"] or [],
+                pricing_tier="mid" if not row["min_budget"] else ("budget" if row["min_budget"] < 5000 else ("premium" if row["min_budget"] > 15000 else "mid")),
+                website=row["website"],
+                logo_url=row["logo_url"],
+                rating=float(row["avg_rating"]) if row["avg_rating"] else None,
+                match_score=0.9 if row["global_rank"] and row["global_rank"] <= 10 else 0.7,
+            )
+            if provider not in ctx.deps.state.recommended_providers:
+                ctx.deps.state.recommended_providers.append(provider)
+
+        print(f"[GTM] Found {len(agencies)} agencies", file=sys.stderr)
+
+        return {
+            "success": True,
+            "count": len(agencies),
+            "agencies": agencies,
+            "message": f"Found {len(agencies)} GTM agencies" + (f" in {location}" if location else "") + (f" specializing in {specialization}" if specialization else ""),
+        }
+
+    except Exception as e:
+        print(f"[GTM] Database error: {e}", file=sys.stderr)
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Unable to search agencies at this time.",
+        }
+
+
+@agent.tool
+async def get_agency_details(
+    ctx: RunContext[StateDeps[AppState]],
+    slug: str,
+) -> dict:
+    """Get detailed information about a specific agency.
+
+    Args:
+        slug: The agency slug (e.g., 'singlegrain', 'refinelabs')
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, slug, name, description, headquarters, logo_url, website,
+                   specializations, service_areas, key_services, global_rank,
+                   founded_year, employee_count, pricing_model, min_budget,
+                   avg_rating, review_count, overview
+            FROM companies
+            WHERE app = 'gtm' AND status = 'published' AND slug = %s
+            LIMIT 1
+        """, [slug])
+
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not row:
+            return {
+                "success": False,
+                "message": f"Agency '{slug}' not found.",
+            }
+
+        agency = {
+            "name": row["name"],
+            "slug": row["slug"],
+            "description": row["description"],
+            "overview": row["overview"],
+            "headquarters": row["headquarters"],
+            "website": row["website"],
+            "specializations": row["specializations"] or [],
+            "service_areas": row["service_areas"] or [],
+            "key_services": row["key_services"] or [],
+            "global_rank": row["global_rank"],
+            "founded_year": row["founded_year"],
+            "employee_count": row["employee_count"],
+            "pricing_model": row["pricing_model"],
+            "min_budget": row["min_budget"],
+            "avg_rating": float(row["avg_rating"]) if row["avg_rating"] else None,
+            "review_count": row["review_count"],
+        }
+
+        print(f"[GTM] Retrieved agency: {row['name']}", file=sys.stderr)
+
+        return {
+            "success": True,
+            "agency": agency,
+            "message": f"Here's information about {row['name']}.",
+        }
+
+    except Exception as e:
+        print(f"[GTM] Database error: {e}", file=sys.stderr)
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Unable to retrieve agency details at this time.",
+        }
+
+
+@agent.tool
+async def get_top_agencies(
+    ctx: RunContext[StateDeps[AppState]],
+    limit: int = 10,
+) -> dict:
+    """Get the top-ranked GTM agencies.
+
+    Args:
+        limit: Number of agencies to return (default 10)
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, slug, name, description, headquarters, logo_url,
+                   specializations, global_rank, website, pricing_model, min_budget
+            FROM companies
+            WHERE app = 'gtm' AND status = 'published' AND global_rank IS NOT NULL
+            ORDER BY global_rank ASC
+            LIMIT %s
+        """, [limit])
+
+        results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        agencies = []
+        for row in results:
+            agencies.append({
+                "rank": row["global_rank"],
+                "name": row["name"],
+                "slug": row["slug"],
+                "description": row["description"],
+                "headquarters": row["headquarters"],
+                "specializations": row["specializations"] or [],
+                "website": row["website"],
+            })
+
+        print(f"[GTM] Retrieved top {len(agencies)} agencies", file=sys.stderr)
+
+        return {
+            "success": True,
+            "count": len(agencies),
+            "agencies": agencies,
+            "message": f"Here are the top {len(agencies)} ranked GTM agencies.",
+        }
+
+    except Exception as e:
+        print(f"[GTM] Database error: {e}", file=sys.stderr)
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Unable to retrieve top agencies at this time.",
+        }
+
+
+@agent.tool
+async def generate_budget_breakdown(
+    ctx: RunContext[StateDeps[AppState]],
+    total_budget: float,
+    categories: list[dict],
+) -> dict:
+    """Generate a budget breakdown for the GTM strategy.
+
+    Args:
+        total_budget: Total monthly budget in dollars
+        categories: List of budget categories with name, amount, and percentage
+                   Example: [{"name": "Paid Ads", "amount": 5000, "percentage": 50}]
+    """
+    from pydantic import BaseModel
+
+    class BudgetCategory(BaseModel):
+        name: str
+        amount: float
+        percentage: float
+
+    class BudgetBreakdown(BaseModel):
+        total: float
+        categories: list[BudgetCategory]
+
+    breakdown = BudgetBreakdown(
+        total=total_budget,
+        categories=[BudgetCategory(**cat) for cat in categories]
+    )
+
+    ctx.deps.state.budget_breakdown = breakdown
+    ctx.deps.state.budget = total_budget
+
+    print(f"[GTM] Generated budget breakdown: ${total_budget} across {len(categories)} categories", file=sys.stderr)
+
+    return {
+        "success": True,
+        "message": f"Budget breakdown of ${total_budget:,.0f}/mo has been added to the report.",
+    }
+
+
+@agent.tool
+async def generate_timeline(
+    ctx: RunContext[StateDeps[AppState]],
+    phases: list[dict],
+) -> dict:
+    """Generate implementation timeline phases for the GTM strategy.
+
+    Args:
+        phases: List of phases with name, duration, activities, and milestones
+                Example: [{"name": "Foundation", "duration": "Month 1-2",
+                          "activities": ["Set up CRM", "Define ICP"],
+                          "milestones": ["CRM live", "ICP documented"]}]
+    """
+    from pydantic import BaseModel
+
+    class Phase(BaseModel):
+        name: str
+        duration: str
+        activities: list[str]
+        milestones: list[str]
+
+    timeline = [Phase(**phase) for phase in phases]
+    ctx.deps.state.timeline_phases = timeline
+
+    print(f"[GTM] Generated timeline with {len(phases)} phases", file=sys.stderr)
+
+    return {
+        "success": True,
+        "message": f"Implementation timeline with {len(phases)} phases has been added to your report.",
+    }
+
+
+@agent.tool
+async def save_contact_request(
+    ctx: RunContext[StateDeps[AppState]],
+    full_name: str,
+    email: str,
+    company_name: Optional[str] = None,
+    message: Optional[str] = None,
+) -> dict:
+    """Save a contact request when user wants to connect with an agency or get more help.
+
+    Args:
+        full_name: User's full name
+        email: User's email address
+        company_name: Optional company name
+        message: Optional message or notes
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO contact_submissions
+            (submission_type, full_name, email, company_name, message, site, created_at)
+            VALUES ('gtm_consultation', %s, %s, %s, %s, 'gtm', NOW())
+            RETURNING id
+        """, [full_name, email, company_name, message])
+
+        result = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        print(f"[GTM] Saved contact request from {email}", file=sys.stderr)
+
+        return {
+            "success": True,
+            "contact_id": result["id"] if result else None,
+            "message": f"Thanks {full_name}! Your contact request has been saved. An agency will reach out to {email} soon.",
+        }
+
+    except Exception as e:
+        print(f"[GTM] Error saving contact: {e}", file=sys.stderr)
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "There was an issue saving your contact info. Please try again.",
+        }
 
 
 # =====

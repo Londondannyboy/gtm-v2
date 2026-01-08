@@ -32,6 +32,16 @@ const LiveDashboard = dynamic(
   { ssr: false }
 );
 
+// Wow Factor Components - React to user input
+const ReactiveHero = dynamic(
+  () => import('@/components/hero/ReactiveHero').then(mod => mod.ReactiveHero),
+  { ssr: false }
+);
+const StrategyPath = dynamic(
+  () => import('@/components/viz/StrategyPath').then(mod => mod.StrategyPath),
+  { ssr: false }
+);
+
 // Instructions for the GTM advisor agent
 const AGENT_INSTRUCTIONS = `You are an expert Go-To-Market (GTM) strategist helping companies plan their market entry.
 
@@ -174,70 +184,22 @@ Address them by name. Start by greeting ${user.name?.split(' ')[0] || 'them'}.`
           </div>
         </header>
 
-        {/* Hero Section with Full Screen Video */}
-        <section className="relative w-full h-screen bg-black overflow-hidden">
-          {/* Video Banner - MUX Background Video */}
-          <video
-            className="absolute inset-0 w-full h-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-          >
-            <source
-              src="https://stream.mux.com/qIS6PGKxIZyzjrDBzxQuqPRBOhHofDnXq1chdsqAY9Y/high.mp4"
-              type="video/mp4"
-            />
-          </video>
+        {/* Reactive Hero - Transforms based on user input */}
+        <ReactiveHero />
 
-          {/* Overlay Gradient */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/80" />
-
-          {/* Bottom Left Card */}
-          <div className="absolute bottom-8 left-8 md:bottom-16 md:left-16 z-10">
-            <div
-              className="backdrop-blur-md rounded-2xl p-6 md:p-8 border border-white/20 shadow-2xl"
-              style={{
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%)',
-              }}
-            >
-              <h2 className="text-xl md:text-3xl font-black text-white mb-2">
-                Scale Your GTM
-              </h2>
-              <p className="text-sm md:text-base text-white/80 font-light">
-                AI-powered go-to-market strategy in minutes
-              </p>
-            </div>
-          </div>
-
-          {/* CTA in center-bottom */}
-          <div className="absolute bottom-8 right-8 md:bottom-16 md:right-16 z-10 hidden md:block">
-            <Link
-              href="/agencies"
-              className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition shadow-2xl"
-            >
-              Browse 200+ Agencies
-            </Link>
-          </div>
-
-          {/* Scroll indicator */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
-            <div className="w-8 h-12 border-2 border-white/40 rounded-full flex items-start justify-center pt-2">
-              <div className="w-1 h-3 bg-white/60 rounded-full" />
-            </div>
+        {/* Strategy Path - Shows user's GTM journey building */}
+        <section className="py-12 md:py-16 bg-gradient-to-b from-black to-zinc-950 border-b border-white/10">
+          <div className="max-w-5xl mx-auto px-6">
+            <StrategyPath />
           </div>
         </section>
 
         {/* Content Below Video */}
-        <section className="py-16 md:py-24 bg-black">
+        <section className="py-16 md:py-24 bg-zinc-950">
           <div className="max-w-4xl mx-auto px-6 text-center">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-tight">
-              Scale Your Revenue with AI-Powered GTM
-            </h1>
-
             <p className="text-lg md:text-2xl text-white/80 mb-10 leading-relaxed font-light">
-              Chat with our AI strategist to get personalized go-to-market recommendations,
-              agency matches, and ROI projections - all in real-time.
+              Start speaking or typing to build your personalized GTM strategy.
+              Watch your dashboard come alive as our AI learns about your company.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center items-center">

@@ -3,6 +3,7 @@
 import { CopilotSidebar } from '@copilotkit/react-ui';
 import { useCoAgent } from '@copilotkit/react-core';
 import { GTMState } from '@/lib/types';
+import { AuthButton } from '@/components/auth/AuthButton';
 
 // Instructions for the GTM advisor agent
 const GTM_INSTRUCTIONS = `You are an expert Go-To-Market (GTM) strategist helping companies plan their market entry.
@@ -43,12 +44,17 @@ export default function Home() {
       <main className="min-h-screen p-8">
         {/* Header */}
         <div className="max-w-6xl mx-auto mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 font-[family-name:var(--font-playfair)]">
-            GTM.quest
-          </h1>
-          <p className="text-lg text-gray-600 mt-2">
-            AI-Powered Go-To-Market Strategy
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 font-[family-name:var(--font-playfair)]">
+                GTM.quest
+              </h1>
+              <p className="text-lg text-gray-600 mt-2">
+                AI-Powered Go-To-Market Strategy
+              </p>
+            </div>
+            <AuthButton />
+          </div>
         </div>
 
         {/* Report Panel - Populated via useCoAgent state */}

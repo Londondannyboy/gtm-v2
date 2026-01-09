@@ -19,7 +19,7 @@ export function InlineChatActions() {
       { name: 'description', type: 'string', description: 'Brief description' },
       { name: 'headquarters', type: 'string', description: 'Location' },
       { name: 'matchScore', type: 'number', description: 'Match score 0-100' },
-      { name: 'specializations', type: 'string[]', description: 'Specializations' },
+      { name: 'specializations', type: 'string', description: 'Comma-separated specializations' },
     ],
     render: ({ args, status }) => {
       if (status === 'executing') {
@@ -46,11 +46,11 @@ export function InlineChatActions() {
           {description && (
             <p className="text-sm text-gray-600 mt-2 line-clamp-2">{description}</p>
           )}
-          {specializations && specializations.length > 0 && (
+          {specializations && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {specializations.slice(0, 3).map((spec: string) => (
+              {String(specializations).split(',').slice(0, 3).map((spec: string) => (
                 <span key={spec} className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                  {spec}
+                  {spec.trim()}
                 </span>
               ))}
             </div>
@@ -131,7 +131,7 @@ export function InlineChatActions() {
       { name: 'strategyType', type: 'string', description: 'plg, sales_led, or hybrid', required: true },
       { name: 'strategyName', type: 'string', description: 'Human readable name', required: true },
       { name: 'summary', type: 'string', description: 'Brief summary', required: true },
-      { name: 'keyActions', type: 'string[]', description: 'Key action items' },
+      { name: 'keyActions', type: 'string', description: 'Pipe-separated key action items' },
     ],
     render: ({ args, status }) => {
       if (status === 'executing') {
@@ -161,12 +161,12 @@ export function InlineChatActions() {
             <span className="font-bold text-gray-900">{strategyName}</span>
           </div>
           <p className="text-sm text-gray-700 mb-3">{summary}</p>
-          {keyActions && keyActions.length > 0 && (
+          {keyActions && (
             <div className="space-y-1">
-              {keyActions.slice(0, 3).map((action: string, i: number) => (
+              {String(keyActions).split('|').slice(0, 3).map((action: string, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
                   <span className="text-emerald-500">✓</span>
-                  {action}
+                  {action.trim()}
                 </div>
               ))}
             </div>

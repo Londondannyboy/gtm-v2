@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { VoiceProvider, useVoice } from '@humeai/voice-react';
+import { CircularWaveform, MiniWaveform } from '@/components/effects/VoiceWaveform';
 
 interface VoiceWidgetProps {
   onMessage?: (text: string, role: 'user' | 'assistant') => void;
@@ -127,45 +128,48 @@ ${
   const isConnected = status.value === 'connected';
 
   return (
-    <button
-      onClick={handleToggle}
-      disabled={isPending}
-      className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${
-        isConnected
-          ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-          : isPending
-          ? 'bg-gray-400 cursor-not-allowed'
-          : 'bg-emerald-600 hover:bg-emerald-700'
-      }`}
-      title={isConnected ? 'Stop voice' : 'Start voice conversation'}
-    >
-      {isPending ? (
-        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-      ) : (
-        <svg
-          className="w-7 h-7 text-white"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          {isConnected ? (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M9 10h6v4H9z"
-            />
-          ) : (
+    <div className="relative">
+      {/* Circular waveform animation when listening */}
+      {isConnected && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <CircularWaveform isListening={isConnected} size={70} color="#10B981" />
+        </div>
+      )}
+
+      <button
+        onClick={handleToggle}
+        disabled={isPending}
+        className={`relative z-10 w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${
+          isConnected
+            ? 'bg-red-500 hover:bg-red-600'
+            : isPending
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-emerald-600 hover:bg-emerald-700'
+        }`}
+        title={isConnected ? 'Stop voice' : 'Start voice conversation'}
+      >
+        {isPending ? (
+          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : isConnected ? (
+          /* Mini waveform bars when active */
+          <MiniWaveform isActive={true} barCount={5} color="#fff" />
+        ) : (
+          <svg
+            className="w-7 h-7 text-white"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
               d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
             />
-          )}
-        </svg>
-      )}
-    </button>
+          </svg>
+        )}
+      </button>
+    </div>
   );
 }
 

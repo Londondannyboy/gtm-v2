@@ -3,7 +3,8 @@
 import { useCoAgent } from '@copilotkit/react-core';
 import { GTMState } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
+import { Confetti, useNodeConfetti } from '@/components/effects/Confetti';
 
 interface PathNode {
   id: string;
@@ -22,6 +23,9 @@ export function StrategyPath() {
       timeline_phases: [],
     },
   });
+
+  const fireNodeConfetti = useNodeConfetti();
+  const prevCompletedRef = useRef<Set<string>>(new Set());
 
   const nodes = useMemo((): PathNode[] => [
     {
@@ -72,6 +76,29 @@ export function StrategyPath() {
 
   const completedCount = nodes.filter(n => n.completed).length;
   const progress = (completedCount / nodes.length) * 100;
+  const isComplete = completedCount === nodes.length;
+
+  // Track newly completed nodes and fire mini confetti
+  useEffect(() => {
+    const currentCompleted = new Set(nodes.filter(n => n.completed).map(n => n.id));
+
+    // Find newly completed nodes
+    currentCompleted.forEach(id => {
+      if (!prevCompletedRef.current.has(id)) {
+        // This node just completed! Find its position and fire confetti
+        const nodeIndex = nodes.findIndex(n => n.id === id);
+        if (nodeIndex >= 0) {
+          // Calculate approximate position (assuming evenly spaced)
+          const containerWidth = window.innerWidth * 0.8; // max-w-5xl approximation
+          const nodeX = (window.innerWidth - containerWidth) / 2 + (nodeIndex / (nodes.length - 1)) * containerWidth;
+          const nodeY = 200; // Approximate Y position
+          fireNodeConfetti(nodeX, nodeY);
+        }
+      }
+    });
+
+    prevCompletedRef.current = currentCompleted;
+  }, [nodes, fireNodeConfetti]);
 
   // Don't show if no data at all
   const hasAnyData = completedCount > 0;
@@ -79,6 +106,9 @@ export function StrategyPath() {
 
   return (
     <div className="w-full py-8">
+      {/* Big confetti when fully complete */}
+      <Confetti trigger={isComplete} />
+
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
@@ -114,6 +144,7 @@ export function StrategyPath() {
               node={node}
               index={index}
               isActive={index === completedCount}
+              justCompleted={prevCompletedRef.current.has(node.id) && node.completed}
             />
           ))}
         </div>
@@ -140,22 +171,36 @@ export function StrategyPath() {
 
       {/* Completion Celebration */}
       <AnimatePresence>
-        {completedCount === nodes.length && (
+        {isComplete && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="mt-8 text-center p-6 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 rounded-2xl border border-emerald-500/30"
           >
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
-              className="text-4xl mb-2"
+              className="text-5xl mb-2"
             >
               🎉
             </motion.div>
-            <h3 className="text-xl font-bold text-white">Strategy Complete!</h3>
-            <p className="text-white/70 mt-1">Your personalized GTM plan is ready</p>
+            <motion.h3
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-xl font-bold text-white"
+            >
+              Strategy Complete!
+            </motion.h3>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="text-white/70 mt-1"
+            >
+              Your personalized GTM plan is ready
+            </motion.p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -167,13 +212,18 @@ function PathNodeComponent({
   node,
   index,
   isActive,
+  justCompleted,
 }: {
   node: PathNode;
   index: number;
   isActive: boolean;
+  justCompleted: boolean;
 }) {
+  const nodeRef = useRef<HTMLDivElement>(null);
+
   return (
     <motion.div
+      ref={nodeRef}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
@@ -189,18 +239,55 @@ function PathNodeComponent({
             : 'bg-white/10'
         }`}
         whileHover={{ scale: 1.1 }}
-        animate={isActive ? { scale: [1, 1.05, 1] } : {}}
-        transition={isActive ? { duration: 2, repeat: Infinity } : {}}
+        animate={
+          isActive
+            ? { scale: [1, 1.05, 1] }
+            : justCompleted
+            ? { scale: [1, 1.2, 1] }
+            : {}
+        }
+        transition={isActive ? { duration: 2, repeat: Infinity } : { duration: 0.3 }}
       >
         {node.icon}
+
+        {/* Particle burst effect on completion */}
+        <AnimatePresence>
+          {node.completed && (
+            <>
+              {/* Ring burst */}
+              <motion.div
+                initial={{ scale: 0.5, opacity: 1 }}
+                animate={{ scale: 2, opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0 rounded-full border-2 border-emerald-400"
+              />
+              {/* Particles */}
+              {[...Array(8)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ scale: 0, x: 0, y: 0 }}
+                  animate={{
+                    scale: [0, 1, 0],
+                    x: Math.cos((i * Math.PI * 2) / 8) * 40,
+                    y: Math.sin((i * Math.PI * 2) / 8) * 40,
+                  }}
+                  transition={{ duration: 0.6, delay: i * 0.02 }}
+                  className="absolute w-2 h-2 bg-emerald-400 rounded-full"
+                />
+              ))}
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Completion Check */}
         <AnimatePresence>
           {node.completed && (
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -right-1 -top-1 w-6 h-6 bg-white rounded-full flex items-center justify-center"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+              className="absolute -right-1 -top-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg"
             >
               <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />

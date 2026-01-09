@@ -1,22 +1,51 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
-// GTM-related terms that float in the background
-const GTM_TERMS = [
+// GTM-related terms with their filter categories
+const GTM_TERMS: { text: string; filter: string }[] = [
   // Strategies
-  'Product-Led Growth', 'Sales-Led', 'ABM', 'Demand Gen', 'Inbound Marketing',
-  'Content Marketing', 'SEO', 'Paid Media', 'Brand Awareness', 'Lead Generation',
+  { text: 'Product-Led Growth', filter: 'plg' },
+  { text: 'Sales-Led', filter: 'sales' },
+  { text: 'ABM', filter: 'abm' },
+  { text: 'Demand Gen', filter: 'demand-generation' },
+  { text: 'Inbound Marketing', filter: 'inbound' },
+  { text: 'Content Marketing', filter: 'content' },
+  { text: 'SEO', filter: 'seo' },
+  { text: 'Paid Media', filter: 'paid-media' },
+  { text: 'Brand Awareness', filter: 'branding' },
+  { text: 'Lead Generation', filter: 'lead-gen' },
   // Stages
-  'Series A', 'Series B', 'Seed', 'Growth Stage', 'Enterprise',
+  { text: 'Series A', filter: 'series-a' },
+  { text: 'Series B', filter: 'series-b' },
+  { text: 'Seed', filter: 'seed' },
+  { text: 'Growth Stage', filter: 'growth' },
+  { text: 'Enterprise', filter: 'enterprise' },
   // Markets
-  'B2B SaaS', 'FinTech', 'HealthTech', 'MarTech', 'DevTools',
+  { text: 'B2B SaaS', filter: 'saas' },
+  { text: 'FinTech', filter: 'fintech' },
+  { text: 'HealthTech', filter: 'healthtech' },
+  { text: 'MarTech', filter: 'martech' },
+  { text: 'DevTools', filter: 'devtools' },
   // Metrics
-  'CAC', 'LTV', 'MRR', 'ARR', 'Pipeline', 'Conversion',
+  { text: 'CAC', filter: 'cac-optimization' },
+  { text: 'LTV', filter: 'retention' },
+  { text: 'MRR', filter: 'revenue' },
+  { text: 'ARR', filter: 'revenue' },
+  { text: 'Pipeline', filter: 'pipeline' },
+  { text: 'Conversion', filter: 'cro' },
   // Tactics
-  'Cold Outreach', 'Events', 'Webinars', 'Partnerships', 'Referrals',
+  { text: 'Cold Outreach', filter: 'outbound' },
+  { text: 'Events', filter: 'events' },
+  { text: 'Webinars', filter: 'webinars' },
+  { text: 'Partnerships', filter: 'partnerships' },
+  { text: 'Referrals', filter: 'referral' },
   // Agencies
-  'GTM Strategy', 'Revenue Operations', 'Growth Marketing', 'Digital PR',
+  { text: 'GTM Strategy', filter: 'strategy' },
+  { text: 'Revenue Operations', filter: 'revops' },
+  { text: 'Growth Marketing', filter: 'growth' },
+  { text: 'Digital PR', filter: 'pr' },
 ];
 
 interface Particle {
@@ -25,42 +54,96 @@ interface Particle {
   vx: number;
   vy: number;
   text: string;
+  filter: string;
   opacity: number;
   size: number;
   targetOpacity: number;
   highlighted: boolean;
+  depth: number; // For parallax effect (0-1)
+  baseY: number; // Original Y position for parallax calculation
 }
 
 interface FloatingTermsProps {
   highlightTerms?: string[];
   className?: string;
+  onTermClick?: (filter: string) => void;
 }
 
-export function FloatingTerms({ highlightTerms = [], className = '' }: FloatingTermsProps) {
+export function FloatingTerms({ highlightTerms = [], className = '', onTermClick }: FloatingTermsProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animationRef = useRef<number | undefined>(undefined);
-  const mouseRef = useRef({ x: 0, y: 0 });
+  const mouseRef = useRef({ x: 0, y: 0, clicked: false });
+  const scrollRef = useRef(0);
+  const router = useRouter();
 
   const initParticles = useCallback((width: number, height: number) => {
     const particles: Particle[] = [];
-    const numParticles = Math.min(GTM_TERMS.length, 25); // Limit for performance
+    const numParticles = Math.min(GTM_TERMS.length, 30);
 
     for (let i = 0; i < numParticles; i++) {
+      const y = Math.random() * height;
       particles.push({
         x: Math.random() * width,
-        y: Math.random() * height,
+        y,
+        baseY: y,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.2,
-        text: GTM_TERMS[i],
+        text: GTM_TERMS[i].text,
+        filter: GTM_TERMS[i].filter,
         opacity: 0.1 + Math.random() * 0.15,
         size: 12 + Math.random() * 6,
         targetOpacity: 0.1 + Math.random() * 0.15,
         highlighted: false,
+        depth: Math.random(), // Random depth for parallax
       });
     }
 
     return particles;
+  }, []);
+
+  // Handle click on particle
+  const handleClick = useCallback((e: MouseEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Check if click is on a particle
+    for (const particle of particlesRef.current) {
+      ctx.font = `${particle.highlighted ? 'bold' : 'normal'} ${particle.size}px Inter, system-ui, sans-serif`;
+      const textWidth = ctx.measureText(particle.text).width;
+      const textHeight = particle.size;
+
+      if (
+        x >= particle.x &&
+        x <= particle.x + textWidth &&
+        y >= particle.y - textHeight &&
+        y <= particle.y
+      ) {
+        // Clicked on this particle!
+        if (onTermClick) {
+          onTermClick(particle.filter);
+        } else {
+          router.push(`/agencies?search=${encodeURIComponent(particle.text)}`);
+        }
+        break;
+      }
+    }
+  }, [router, onTermClick]);
+
+  // Handle scroll for parallax
+  useEffect(() => {
+    const handleScroll = () => {
+      scrollRef.current = window.scrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
@@ -89,12 +172,33 @@ export function FloatingTerms({ highlightTerms = [], className = '' }: FloatingT
       mouseRef.current = {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
+        clicked: false,
       };
+
+      // Check if hovering over a particle and change cursor
+      let isOverParticle = false;
+      for (const particle of particlesRef.current) {
+        ctx.font = `${particle.highlighted ? 'bold' : 'normal'} ${particle.size}px Inter, system-ui, sans-serif`;
+        const textWidth = ctx.measureText(particle.text).width;
+        const textHeight = particle.size;
+
+        if (
+          mouseRef.current.x >= particle.x &&
+          mouseRef.current.x <= particle.x + textWidth &&
+          mouseRef.current.y >= particle.y - textHeight &&
+          mouseRef.current.y <= particle.y
+        ) {
+          isOverParticle = true;
+          break;
+        }
+      }
+      canvas.style.cursor = isOverParticle ? 'pointer' : 'default';
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('click', handleClick);
 
     const animate = () => {
       const rect = canvas.getBoundingClientRect();
@@ -131,14 +235,22 @@ export function FloatingTerms({ highlightTerms = [], className = '' }: FloatingT
         particle.vx *= 0.99;
         particle.vy *= 0.99;
 
-        // Wrap around edges
+        // Parallax effect based on scroll and depth
+        const parallaxOffset = scrollRef.current * particle.depth * 0.3;
+        const displayY = particle.y - parallaxOffset;
+
+        // Wrap around edges (using displayY for bounds check)
         if (particle.x < -100) particle.x = rect.width + 100;
         if (particle.x > rect.width + 100) particle.x = -100;
-        if (particle.y < -50) particle.y = rect.height + 50;
-        if (particle.y > rect.height + 50) particle.y = -50;
+        if (displayY < -50) particle.y += rect.height + 100;
+        if (displayY > rect.height + 50) particle.y -= rect.height + 100;
+
+        // Scale based on depth (closer = larger)
+        const depthScale = 0.8 + particle.depth * 0.4;
+        const adjustedSize = particle.size * depthScale;
 
         // Draw text
-        ctx.font = `${particle.highlighted ? 'bold' : 'normal'} ${particle.size}px Inter, system-ui, sans-serif`;
+        ctx.font = `${particle.highlighted ? 'bold' : 'normal'} ${adjustedSize}px Inter, system-ui, sans-serif`;
 
         if (particle.highlighted) {
           // Glow effect for highlighted terms
@@ -148,10 +260,12 @@ export function FloatingTerms({ highlightTerms = [], className = '' }: FloatingT
         } else {
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
-          ctx.fillStyle = `rgba(255, 255, 255, ${particle.opacity})`;
+          // Depth affects opacity too - closer = more visible
+          const depthOpacity = particle.opacity * (0.5 + particle.depth * 0.5);
+          ctx.fillStyle = `rgba(255, 255, 255, ${depthOpacity})`;
         }
 
-        ctx.fillText(particle.text, particle.x, particle.y);
+        ctx.fillText(particle.text, particle.x, displayY);
       });
 
       // Draw connecting lines between nearby highlighted particles
@@ -163,8 +277,8 @@ export function FloatingTerms({ highlightTerms = [], className = '' }: FloatingT
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 200) {
             ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
+            ctx.moveTo(p1.x, p1.y - scrollRef.current * p1.depth * 0.3);
+            ctx.lineTo(p2.x, p2.y - scrollRef.current * p2.depth * 0.3);
             ctx.strokeStyle = `rgba(16, 185, 129, ${0.3 * (1 - dist / 200)})`;
             ctx.lineWidth = 1;
             ctx.stroke();
@@ -180,11 +294,12 @@ export function FloatingTerms({ highlightTerms = [], className = '' }: FloatingT
     return () => {
       window.removeEventListener('resize', handleResize);
       canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('click', handleClick);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [highlightTerms, initParticles]);
+  }, [highlightTerms, initParticles, handleClick]);
 
   return (
     <canvas

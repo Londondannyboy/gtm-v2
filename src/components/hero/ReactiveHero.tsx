@@ -5,6 +5,7 @@ import { GTMState } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMemo } from 'react';
 import { FloatingTerms } from './FloatingTerms';
+import { ScrambleText } from '@/components/effects/TypeWriter';
 
 // Industry-specific gradients
 const industryGradients: Record<string, string> = {
@@ -153,19 +154,15 @@ export function ReactiveHero({
           )}
         </AnimatePresence>
 
-        {/* Main Headline - Animated on change */}
-        <AnimatePresence mode="wait">
-          <motion.h1
-            key={headline}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
-            className="text-4xl md:text-6xl lg:text-7xl font-black text-white text-center max-w-5xl leading-tight"
-          >
-            {headline}
-          </motion.h1>
-        </AnimatePresence>
+        {/* Main Headline - Scramble animation on change */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-4xl md:text-6xl lg:text-7xl font-black text-white text-center max-w-5xl leading-tight"
+        >
+          <ScrambleText text={headline} duration={800} />
+        </motion.h1>
 
         {/* Subheadline */}
         <AnimatePresence mode="wait">

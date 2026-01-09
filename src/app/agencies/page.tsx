@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { sql } from '@/lib/db';
 import { Agency } from '@/lib/agencies';
 import { AgencyCard } from '@/components/ui/AgencyCard';
+import { Navigation } from '@/components/layout/Navigation';
+import { Footer } from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
   title: 'Top GTM Agencies | GTM.quest',
@@ -69,9 +71,11 @@ export default async function AgenciesPage() {
   const remainingAgencies = agencies.slice(3);
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-black text-white">
+      <Navigation />
+
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white overflow-hidden">
+      <section className="relative bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white overflow-hidden pt-20">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -137,14 +141,14 @@ export default async function AgenciesPage() {
       </section>
 
       {/* Search & Filters */}
-      <section className="bg-white border-b shadow-sm sticky top-0 z-20">
+      <section className="bg-zinc-950 border-b border-white/10 sticky top-16 z-20">
         <div className="max-w-6xl mx-auto px-4 py-4">
           {/* Location filters */}
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            <span className="text-sm text-gray-500 shrink-0 font-medium">Location:</span>
+            <span className="text-sm text-white/50 shrink-0 font-medium">Location:</span>
             <Link
               href="/agencies"
-              className="bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full text-sm font-medium shrink-0"
+              className="bg-emerald-500/20 text-emerald-400 px-4 py-1.5 rounded-full text-sm font-medium shrink-0"
             >
               All ({stats.total})
             </Link>
@@ -152,24 +156,24 @@ export default async function AgenciesPage() {
               <Link
                 key={location}
                 href={`/agencies?location=${encodeURIComponent(location)}`}
-                className="bg-gray-100 hover:bg-emerald-50 hover:text-emerald-700 text-gray-700 px-4 py-1.5 rounded-full text-sm shrink-0 transition"
+                className="bg-white/10 hover:bg-emerald-500/20 hover:text-emerald-400 text-white/70 px-4 py-1.5 rounded-full text-sm shrink-0 transition"
               >
                 {location}
               </Link>
             ))}
             {locations.length > 8 && (
-              <span className="text-sm text-gray-400 shrink-0">+{locations.length - 8} more</span>
+              <span className="text-sm text-white/40 shrink-0">+{locations.length - 8} more</span>
             )}
           </div>
 
           {/* Specialization filters */}
           <div className="flex items-center gap-3 overflow-x-auto pt-2 scrollbar-hide">
-            <span className="text-sm text-gray-500 shrink-0 font-medium">Focus:</span>
+            <span className="text-sm text-white/50 shrink-0 font-medium">Focus:</span>
             {specializations.slice(0, 8).map((spec) => (
               <Link
                 key={spec}
                 href={`/agencies?specialization=${encodeURIComponent(spec)}`}
-                className="bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 text-gray-600 px-3 py-1 rounded-full text-sm shrink-0 transition border"
+                className="bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-400 text-white/60 px-3 py-1 rounded-full text-sm shrink-0 transition border border-white/10"
               >
                 {spec}
               </Link>
@@ -181,10 +185,10 @@ export default async function AgenciesPage() {
       {/* Featured Agencies */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            🏆 Top Ranked Agencies
+          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            Top Ranked Agencies
           </h2>
-          <Link href="/compare" className="text-emerald-600 hover:underline text-sm font-medium">
+          <Link href="/compare" className="text-emerald-400 hover:underline text-sm font-medium">
             Compare all →
           </Link>
         </div>
@@ -197,7 +201,7 @@ export default async function AgenciesPage() {
 
       {/* All Agencies */}
       <section className="max-w-6xl mx-auto px-4 pb-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <h2 className="text-2xl font-bold text-white mb-6">
           All Agencies
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -208,22 +212,23 @@ export default async function AgenciesPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-gradient-to-br from-gray-900 to-gray-800 text-white py-16">
+      <section className="bg-gradient-to-r from-emerald-600 to-emerald-500 py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <span className="text-4xl mb-4 block">🤖</span>
-          <h2 className="text-3xl font-bold mb-4">Not sure which agency is right for you?</h2>
-          <p className="text-gray-300 mb-8 text-lg">
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-4">Not sure which agency is right for you?</h2>
+          <p className="text-white/90 mb-8 text-lg">
             Our AI advisor analyzes your industry, budget, and goals to match you with the
             perfect GTM partner in seconds.
           </p>
           <Link
             href="/"
-            className="inline-block bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-xl font-semibold transition shadow-lg text-lg"
+            className="inline-block bg-black hover:bg-gray-900 text-white px-8 py-4 rounded-xl font-bold transition shadow-lg text-lg"
           >
             Get AI Recommendations
           </Link>
         </div>
       </section>
-    </main>
+
+      <Footer />
+    </div>
   );
 }

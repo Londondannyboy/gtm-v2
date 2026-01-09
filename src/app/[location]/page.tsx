@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { sql } from '@/lib/db';
@@ -6,27 +7,45 @@ import { Agency } from '@/lib/agencies';
 import { AgencyCard } from '@/components/ui/AgencyCard';
 import { Navigation } from '@/components/layout/Navigation';
 import { Footer } from '@/components/layout/Footer';
-import { getLocationData } from '@/lib/locations';
+import { locations, getLocationBySlug } from '@/lib/locations';
 
-const locationKey = 'london';
-const location = getLocationData(locationKey)!;
+interface PageProps {
+  params: Promise<{ location: string }>;
+}
 
-export const metadata: Metadata = {
-  title: `GTM Agencies ${location.name} 2025 | Top Go-To-Market Consultants`,
-  description: `Find the best GTM agencies in ${location.name}. Compare top go-to-market consultancies serving ${location.country} and ${location.region} markets.`,
-  keywords: `GTM agency ${location.name}, go-to-market agencies ${location.name}, GTM consultants ${location.name}`,
-  alternates: {
-    canonical: `https://gtm.quest/${location.slug}`
-  },
-  openGraph: {
-    title: `Top GTM Agencies in ${location.name} | 2025 Directory`,
-    description: `Compare the best go-to-market agencies in ${location.name}.`,
-    url: `https://gtm.quest/${location.slug}`,
-    type: 'website'
+// Generate static params for all location pages
+export async function generateStaticParams() {
+  return Object.values(locations).map((loc) => ({
+    location: loc.slug,
+  }));
+}
+
+// Generate metadata dynamically
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { location: slug } = await params;
+  const location = getLocationBySlug(slug);
+
+  if (!location) {
+    return { title: 'Not Found' };
   }
-};
 
-async function getAgenciesInLocation(): Promise<Agency[]> {
+  return {
+    title: `GTM Agencies ${location.name} 2025 | Top Go-To-Market Consultants`,
+    description: `Find the best GTM agencies in ${location.name}. Compare top go-to-market consultancies serving ${location.country} and ${location.region} markets.`,
+    keywords: `GTM agency ${location.name}, go-to-market agencies ${location.name}, GTM consultants ${location.name}`,
+    alternates: {
+      canonical: `https://gtm.quest/${location.slug}`
+    },
+    openGraph: {
+      title: `Top GTM Agencies in ${location.name} | 2025 Directory`,
+      description: `Compare the best go-to-market agencies in ${location.name}.`,
+      url: `https://gtm.quest/${location.slug}`,
+      type: 'website'
+    }
+  };
+}
+
+async function getAgenciesInLocation(locationName: string): Promise<Agency[]> {
   const results = await sql`
     SELECT id, slug, name, description, headquarters, logo_url, hero_asset_url,
            specializations, service_areas, category_tags, global_rank, founded_year,
@@ -34,7 +53,7 @@ async function getAgenciesInLocation(): Promise<Agency[]> {
            overview, key_services, avg_rating, review_count
     FROM companies
     WHERE app = 'gtm' AND status = 'published'
-      AND (headquarters ILIKE ${'%' + location.name + '%'} OR ${location.name} = ANY(service_areas))
+      AND (headquarters ILIKE ${'%' + locationName + '%'} OR ${locationName} = ANY(service_areas))
     ORDER BY global_rank NULLS LAST
   `;
   return results as Agency[];
@@ -42,8 +61,15 @@ async function getAgenciesInLocation(): Promise<Agency[]> {
 
 export const revalidate = 3600;
 
-export default async function LocationPage() {
-  const agencies = await getAgenciesInLocation();
+export default async function LocationPage({ params }: PageProps) {
+  const { location: slug } = await params;
+  const location = getLocationBySlug(slug);
+
+  if (!location) {
+    notFound();
+  }
+
+  const agencies = await getAgenciesInLocation(location.name);
 
   const faqSchema = {
     '@context': 'https://schema.org',
@@ -244,7 +270,7 @@ export default async function LocationPage() {
           <h2 className="text-3xl md:text-4xl font-black text-white mb-12">Related Markets</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {location.relatedLocations.map((relatedKey) => {
-              const related = getLocationData(relatedKey);
+              const related = locations[relatedKey];
               if (!related) return null;
               return (
                 <Link

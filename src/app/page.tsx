@@ -23,11 +23,10 @@ import { downloadReport, copyReportToClipboard } from '@/lib/export';
 
 // Dynamic imports to avoid SSR issues
 import dynamic from 'next/dynamic';
-// InlineChatActions temporarily disabled - investigating CopilotKit action config
-// const InlineChatActions = dynamic(
-//   () => import('@/components/chat/InlineChatActions').then(mod => mod.InlineChatActions),
-//   { ssr: false }
-// );
+const InlineChatActions = dynamic(
+  () => import('@/components/chat/InlineChatActions').then(mod => mod.InlineChatActions),
+  { ssr: false }
+);
 const LiveDashboard = dynamic(
   () => import('@/components/dashboard/LiveDashboard').then(mod => mod.LiveDashboard),
   { ssr: false }
@@ -149,8 +148,8 @@ Address them by name. Start by greeting ${user.name?.split(' ')[0] || 'them'}.`
       }}
       className="h-screen"
     >
-      {/* Inline chat actions temporarily disabled - investigating CopilotKit config */}
-      {/* <InlineChatActions /> */}
+      {/* Register inline chat actions for rich renders */}
+      <InlineChatActions />
 
       <div className="flex flex-col bg-black text-white min-h-screen">
         {/* Header - Fixed */}

@@ -7,22 +7,26 @@ import Link from 'next/link';
  * This component registers useCopilotAction hooks that render
  * rich inline components directly in the chat when the agent
  * performs certain actions.
+ *
+ * Using available: "disabled" makes these render-only actions
+ * that respond to backend tool calls, not direct AI invocations.
  */
 export function InlineChatActions() {
   // Render agency cards inline when agent finds agencies
   useCopilotAction({
     name: 'showAgencyPreview',
     description: 'Show a preview card for an agency inline in the chat',
+    available: 'disabled', // Render-only, called from backend
     parameters: [
       { name: 'name', type: 'string', description: 'Agency name', required: true },
       { name: 'slug', type: 'string', description: 'Agency slug', required: true },
-      { name: 'description', type: 'string', description: 'Brief description' },
-      { name: 'headquarters', type: 'string', description: 'Location' },
-      { name: 'matchScore', type: 'number', description: 'Match score 0-100' },
-      { name: 'specializations', type: 'string', description: 'Comma-separated specializations' },
+      { name: 'description', type: 'string', description: 'Brief description', required: false },
+      { name: 'headquarters', type: 'string', description: 'Location', required: false },
+      { name: 'matchScore', type: 'number', description: 'Match score 0-100', required: false },
+      { name: 'specializations', type: 'string[]', description: 'Specializations', required: false },
     ],
     render: ({ args, status }) => {
-      if (status === 'executing') {
+      if (status === 'inProgress') {
         return <div className="animate-pulse bg-gray-100 rounded-lg h-24" />;
       }
 
@@ -46,11 +50,11 @@ export function InlineChatActions() {
           {description && (
             <p className="text-sm text-gray-600 mt-2 line-clamp-2">{description}</p>
           )}
-          {specializations && (
+          {specializations && Array.isArray(specializations) && specializations.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
-              {String(specializations).split(',').slice(0, 3).map((spec: string) => (
+              {specializations.slice(0, 3).map((spec: string) => (
                 <span key={spec} className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                  {spec.trim()}
+                  {spec}
                 </span>
               ))}
             </div>
@@ -70,14 +74,15 @@ export function InlineChatActions() {
   useCopilotAction({
     name: 'showROICalculation',
     description: 'Show an ROI calculation card inline in the chat',
+    available: 'disabled',
     parameters: [
       { name: 'cac', type: 'number', description: 'Customer Acquisition Cost', required: true },
       { name: 'ltv', type: 'number', description: 'Lifetime Value', required: true },
       { name: 'paybackMonths', type: 'number', description: 'Payback period in months', required: true },
-      { name: 'confidence', type: 'string', description: 'Confidence level' },
+      { name: 'confidence', type: 'string', description: 'Confidence level', required: false },
     ],
     render: ({ args, status }) => {
-      if (status === 'executing') {
+      if (status === 'inProgress') {
         return <div className="animate-pulse bg-gray-100 rounded-lg h-32" />;
       }
 
@@ -127,14 +132,15 @@ export function InlineChatActions() {
   useCopilotAction({
     name: 'showStrategyRecommendation',
     description: 'Show a strategy recommendation card inline in the chat',
+    available: 'disabled',
     parameters: [
       { name: 'strategyType', type: 'string', description: 'plg, sales_led, or hybrid', required: true },
       { name: 'strategyName', type: 'string', description: 'Human readable name', required: true },
       { name: 'summary', type: 'string', description: 'Brief summary', required: true },
-      { name: 'keyActions', type: 'string', description: 'Pipe-separated key action items' },
+      { name: 'keyActions', type: 'string[]', description: 'Key action items', required: false },
     ],
     render: ({ args, status }) => {
-      if (status === 'executing') {
+      if (status === 'inProgress') {
         return <div className="animate-pulse bg-gray-100 rounded-lg h-40" />;
       }
 
@@ -161,12 +167,12 @@ export function InlineChatActions() {
             <span className="font-bold text-gray-900">{strategyName}</span>
           </div>
           <p className="text-sm text-gray-700 mb-3">{summary}</p>
-          {keyActions && (
+          {keyActions && Array.isArray(keyActions) && keyActions.length > 0 && (
             <div className="space-y-1">
-              {String(keyActions).split('|').slice(0, 3).map((action: string, i: number) => (
+              {keyActions.slice(0, 3).map((action: string, i: number) => (
                 <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
                   <span className="text-emerald-500">✓</span>
-                  {action.trim()}
+                  {action}
                 </div>
               ))}
             </div>
@@ -180,10 +186,11 @@ export function InlineChatActions() {
   useCopilotAction({
     name: 'showContactForm',
     description: 'Show a contact form inline when user wants to get in touch',
+    available: 'disabled',
     parameters: [
-      { name: 'prefilledName', type: 'string', description: 'Prefilled name' },
-      { name: 'prefilledEmail', type: 'string', description: 'Prefilled email' },
-      { name: 'agencyName', type: 'string', description: 'Agency they want to contact' },
+      { name: 'prefilledName', type: 'string', description: 'Prefilled name', required: false },
+      { name: 'prefilledEmail', type: 'string', description: 'Prefilled email', required: false },
+      { name: 'agencyName', type: 'string', description: 'Agency they want to contact', required: false },
     ],
     render: ({ args }) => {
       return (

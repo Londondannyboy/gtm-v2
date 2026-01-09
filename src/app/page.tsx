@@ -21,12 +21,13 @@ import { FunnelChart } from '@/components/report/FunnelChart';
 import { ContactForm } from '@/components/report/ContactForm';
 import { downloadReport, copyReportToClipboard } from '@/lib/export';
 
-// CopilotKit inline actions for rich chat renders (dynamic import to avoid SSR issues)
+// Dynamic imports to avoid SSR issues
 import dynamic from 'next/dynamic';
-const InlineChatActions = dynamic(
-  () => import('@/components/chat/InlineChatActions').then(mod => mod.InlineChatActions),
-  { ssr: false }
-);
+// InlineChatActions temporarily disabled - investigating CopilotKit action config
+// const InlineChatActions = dynamic(
+//   () => import('@/components/chat/InlineChatActions').then(mod => mod.InlineChatActions),
+//   { ssr: false }
+// );
 const LiveDashboard = dynamic(
   () => import('@/components/dashboard/LiveDashboard').then(mod => mod.LiveDashboard),
   { ssr: false }
@@ -148,8 +149,8 @@ Address them by name. Start by greeting ${user.name?.split(' ')[0] || 'them'}.`
       }}
       className="h-screen"
     >
-      {/* Register inline chat actions for rich renders */}
-      <InlineChatActions />
+      {/* Inline chat actions temporarily disabled - investigating CopilotKit config */}
+      {/* <InlineChatActions /> */}
 
       <div className="flex flex-col bg-black text-white min-h-screen">
         {/* Header - Fixed */}

@@ -75,11 +75,15 @@ export function FloatingTerms({ highlightTerms = [], className = '', onTermClick
   const animationRef = useRef<number | undefined>(undefined);
   const mouseRef = useRef({ x: 0, y: 0, clicked: false });
   const scrollRef = useRef(0);
+  const isMobileRef = useRef(false);
   const router = useRouter();
 
   const initParticles = useCallback((width: number, height: number) => {
     const particles: Particle[] = [];
-    const numParticles = Math.min(GTM_TERMS.length, 30);
+    // Reduce particles on mobile for performance
+    const isMobile = width < 768;
+    isMobileRef.current = isMobile;
+    const numParticles = isMobile ? Math.min(GTM_TERMS.length, 12) : Math.min(GTM_TERMS.length, 30);
 
     for (let i = 0; i < numParticles; i++) {
       const y = Math.random() * height;

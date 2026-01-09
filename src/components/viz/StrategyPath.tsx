@@ -250,7 +250,7 @@ function PathNodeComponent({
       >
         {node.icon}
 
-        {/* Particle burst effect on completion */}
+        {/* Particle burst effect on completion - reduced on mobile */}
         <AnimatePresence>
           {node.completed && (
             <>
@@ -262,20 +262,22 @@ function PathNodeComponent({
                 transition={{ duration: 0.5 }}
                 className="absolute inset-0 rounded-full border-2 border-emerald-400"
               />
-              {/* Particles */}
-              {[...Array(8)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ scale: 0, x: 0, y: 0 }}
-                  animate={{
-                    scale: [0, 1, 0],
-                    x: Math.cos((i * Math.PI * 2) / 8) * 40,
-                    y: Math.sin((i * Math.PI * 2) / 8) * 40,
-                  }}
-                  transition={{ duration: 0.6, delay: i * 0.02 }}
-                  className="absolute w-2 h-2 bg-emerald-400 rounded-full"
-                />
-              ))}
+              {/* Particles - only on desktop */}
+              <div className="hidden md:block">
+                {[...Array(8)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ scale: 0, x: 0, y: 0 }}
+                    animate={{
+                      scale: [0, 1, 0],
+                      x: Math.cos((i * Math.PI * 2) / 8) * 40,
+                      y: Math.sin((i * Math.PI * 2) / 8) * 40,
+                    }}
+                    transition={{ duration: 0.6, delay: i * 0.02 }}
+                    className="absolute w-2 h-2 bg-emerald-400 rounded-full"
+                  />
+                ))}
+              </div>
             </>
           )}
         </AnimatePresence>

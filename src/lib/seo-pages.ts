@@ -3,7 +3,7 @@ import { sql } from './db';
 export interface SEOPage {
   id: number;
   slug: string;
-  page_type: 'category' | 'location';
+  page_type: 'category' | 'location' | 'country' | 'city_category' | 'topic';
   name: string;
   display_name: string | null;
   description: string | null;

@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-// Get agencies for a location page
+// Get agencies for a location/city page
 async function getAgenciesForLocation(locationName: string): Promise<Agency[]> {
   const results = await sql`
     SELECT id, slug, name, description, headquarters, logo_url, hero_asset_url,
@@ -75,6 +75,37 @@ async function getAgenciesForCategory(categoryName: string): Promise<Agency[]> {
   return results as Agency[];
 }
 
+// Get agencies for a city+category page (e.g., "B2B Marketing Agency London")
+async function getAgenciesForCityCategory(categoryName: string, locationName: string): Promise<Agency[]> {
+  const results = await sql`
+    SELECT id, slug, name, description, headquarters, logo_url, hero_asset_url,
+           specializations, service_areas, category_tags, global_rank, founded_year,
+           employee_count, website, pricing_model, min_budget, status, meta_description,
+           overview, key_services, avg_rating, review_count
+    FROM companies
+    WHERE app = 'gtm' AND status = 'published'
+      AND ${categoryName} = ANY(category_tags)
+      AND (headquarters ILIKE ${'%' + locationName + '%'} OR ${locationName} = ANY(service_areas))
+    ORDER BY global_rank NULLS LAST
+  `;
+  return results as Agency[];
+}
+
+// Get agencies for a country page
+async function getAgenciesForCountry(countryName: string): Promise<Agency[]> {
+  const results = await sql`
+    SELECT id, slug, name, description, headquarters, logo_url, hero_asset_url,
+           specializations, service_areas, category_tags, global_rank, founded_year,
+           employee_count, website, pricing_model, min_budget, status, meta_description,
+           overview, key_services, avg_rating, review_count
+    FROM companies
+    WHERE app = 'gtm' AND status = 'published'
+      AND (${countryName} = ANY(service_areas) OR headquarters ILIKE ${'%' + countryName + '%'})
+    ORDER BY global_rank NULLS LAST
+  `;
+  return results as Agency[];
+}
+
 export const revalidate = 3600;
 
 export default async function SEOPage({ params }: PageProps) {
@@ -86,9 +117,19 @@ export default async function SEOPage({ params }: PageProps) {
   }
 
   // Get agencies based on page type
-  const agencies = page.page_type === 'location'
-    ? await getAgenciesForLocation(page.name)
-    : await getAgenciesForCategory(page.name);
+  let agencies: Agency[];
+  if (page.page_type === 'location') {
+    agencies = await getAgenciesForLocation(page.name);
+  } else if (page.page_type === 'country') {
+    agencies = await getAgenciesForCountry(page.name);
+  } else if (page.page_type === 'city_category') {
+    // For city_category pages, extract the city from the name (e.g., "B2B Marketing Agency London" -> "London")
+    const cityMatch = page.name.match(/(?:Agency|Agencies)\s+(.+)$/i);
+    const cityName = cityMatch ? cityMatch[1] : page.name;
+    agencies = await getAgenciesForCityCategory('B2B Marketing Agency', cityName);
+  } else {
+    agencies = await getAgenciesForCategory(page.name);
+  }
 
   // Get related pages
   const relatedPages = await getRelatedPages(page.related_pages || []);
@@ -122,6 +163,9 @@ export default async function SEOPage({ params }: PageProps) {
   };
 
   const isLocation = page.page_type === 'location';
+  const isCountry = page.page_type === 'country';
+  const isCityCategory = page.page_type === 'city_category';
+  const isGeoPage = isLocation || isCountry || isCityCategory;
   const displayName = page.display_name || page.name;
 
   return (
